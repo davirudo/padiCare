@@ -16,6 +16,8 @@ import android.view.Surface
 import android.view.TextureView
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
+import com.example.padicare.ml.Testpadi
+import org.tensorflow.lite.support.image.TensorImage
 
 class MainActivity : AppCompatActivity() {
 
@@ -53,6 +55,15 @@ class MainActivity : AppCompatActivity() {
 
             override fun onSurfaceTextureUpdated(p0: SurfaceTexture) {
                 bitmap = textureView.bitmap!!
+
+                val model = Testpadi.newInstance(this)
+
+                val image = TensorImage.fromBitmap(bitmap)
+
+                val outputs = model.process(image)
+                val output = outputs.outputAsCategoryList
+
+                model.close()
             }
 
         }
