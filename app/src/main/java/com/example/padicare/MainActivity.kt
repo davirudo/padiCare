@@ -1,5 +1,6 @@
 package com.example.padicare
 
+
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
@@ -16,7 +17,6 @@ import android.view.TextureView
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import com.example.padicare.ml.Padi2
-import com.example.padicare.ml.SsdMobilenetV11Metadata1
 import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
 
     lateinit var labels:List<String>
     var colors = listOf<Int>(
-        Color.BLUE, Color.GREEN, Color.RED, Color.CYAN)
+        Color.BLUE, Color.GREEN, Color.RED)
     val paint = Paint()
     lateinit var imageProcessor: ImageProcessor
     lateinit var bitmap:Bitmap
@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
         get_permission()
 
         labels = FileUtil.loadLabels(this, "labelsPadi.txt")
-        imageProcessor = ImageProcessor.Builder().add(ResizeOp(300, 300, ResizeOp.ResizeMethod.BILINEAR)).build()
+        imageProcessor = ImageProcessor.Builder().add(ResizeOp(640, 640, ResizeOp.ResizeMethod.BILINEAR)).build()
         model = Padi2.newInstance(this)
         val handlerThread = HandlerThread("videoThread")
         handlerThread.start()
@@ -65,15 +65,14 @@ class MainActivity : AppCompatActivity() {
 
             override fun onSurfaceTextureUpdated(p0: SurfaceTexture) {
                 bitmap = textureView.bitmap!!
+                var image = TensorImage.fromBitmap(bitmap)
+                image = imageProcessor.process(image)
 
-                // Creates inputs for reference.
-                val image = TensorImage.fromBitmap(bitmap)
-
-                // Runs model inference and gets result.
                 val outputs = model.process(image)
                 val output = outputs.outputAsCategoryList
 
-                //what should we do next?
+                //Lanjutkan
+
 
             }
         }
