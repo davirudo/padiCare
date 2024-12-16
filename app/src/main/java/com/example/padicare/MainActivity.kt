@@ -21,47 +21,52 @@ import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
+import org.tensorflow.lite.support.label.Category
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var labels:List<String>
-    var colors = listOf<Int>(
-        Color.BLUE, Color.GREEN, Color.RED)
+    lateinit var labels: List<String>
     val paint = Paint()
     lateinit var imageProcessor: ImageProcessor
-    lateinit var bitmap:Bitmap
+    lateinit var bitmap: Bitmap
     lateinit var imageView: ImageView
     lateinit var cameraDevice: CameraDevice
     lateinit var handler: Handler
     lateinit var cameraManager: CameraManager
     lateinit var textureView: TextureView
-    lateinit var model:Padi2
+    lateinit var model: Padi2
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         get_permission()
 
+        // Load labels for the model
         labels = FileUtil.loadLabels(this, "labelsPadi.txt")
-        imageProcessor = ImageProcessor.Builder().add(ResizeOp(640, 640, ResizeOp.ResizeMethod.BILINEAR)).build()
+
+        // Initialize the image processor to resize the image
+        imageProcessor = ImageProcessor.Builder()
+            .add(ResizeOp(640, 640, ResizeOp.ResizeMethod.BILINEAR))  // Resize to fit the model input size
+            .build()
+
+        // Load the model
         model = Padi2.newInstance(this)
+
         val handlerThread = HandlerThread("videoThread")
         handlerThread.start()
         handler = Handler(handlerThread.looper)
 
         imageView = findViewById(R.id.imageView)
-
         textureView = findViewById(R.id.textureView)
-        textureView.surfaceTextureListener = object:TextureView.SurfaceTextureListener{
+
+        textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(p0: SurfaceTexture, p1: Int, p2: Int) {
                 open_camera()
             }
-            override fun onSurfaceTextureSizeChanged(p0: SurfaceTexture, p1: Int, p2: Int) {
-            }
 
-            override fun onSurfaceTextureDestroyed(p0: SurfaceTexture): Boolean {
-                return false
-            }
+            override fun onSurfaceTextureSizeChanged(p0: SurfaceTexture, p1: Int, p2: Int) {}
+
+            override fun onSurfaceTextureDestroyed(p0: SurfaceTexture): Boolean = false
 
             override fun onSurfaceTextureUpdated(p0: SurfaceTexture) {
                 bitmap = textureView.bitmap!!
@@ -71,14 +76,35 @@ class MainActivity : AppCompatActivity() {
                 val outputs = model.process(image)
                 val output = outputs.outputAsCategoryList
 
-                //Lanjutkan
+                // Draw bounding boxes if confidence is above threshold
+                drawBoundingBoxes(output)
+            }
+        }
+        cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+    }
 
+    private fun drawBoundingBoxes(output: MutableList<Category>) {
+        val canvas = Canvas(bitmap)
+        paint.color = Color.RED  // Set bounding box color
+        paint.strokeWidth = 5f
+        paint.style = Paint.Style.STROKE
 
+        // Loop through detected categories and draw bounding boxes if confidence is above threshold
+        output.forEach { category ->
+            if (category.score > 0.5) {
+                // Example: Drawing a bounding box at a fixed position,
+                // You should adjust these coordinates based on model output
+                val left = 100f
+                val top = 100f
+                val right = 540f
+                val bottom = 540f
+
+                canvas.drawRect(left, top, right, bottom, paint)
             }
         }
 
-        cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-
+        // Update the ImageView with the drawn bitmap
+        imageView.setImageBitmap(bitmap)
     }
 
     override fun onDestroy() {
@@ -87,48 +113,44 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("MissingPermission")
-    fun open_camera(){
-        cameraManager.openCamera(cameraManager.cameraIdList[0], object:CameraDevice.StateCallback(){
-            override fun onOpened(p0: CameraDevice) {
-                cameraDevice = p0
+    fun open_camera() {
+        cameraManager.openCamera(cameraManager.cameraIdList[0], object : CameraDevice.StateCallback() {
+            override fun onOpened(camera: CameraDevice) {
+                cameraDevice = camera
 
-                var surfaceTexture = textureView.surfaceTexture
-                var surface = Surface(surfaceTexture)
+                val surfaceTexture = textureView.surfaceTexture
+                val surface = Surface(surfaceTexture)
 
-                var captureRequest = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+                val captureRequest = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
                 captureRequest.addTarget(surface)
 
-                cameraDevice.createCaptureSession(listOf(surface), object: CameraCaptureSession.StateCallback(){
-                    override fun onConfigured(p0: CameraCaptureSession) {
-                        p0.setRepeatingRequest(captureRequest.build(), null, null)
+                cameraDevice.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
+                    override fun onConfigured(session: CameraCaptureSession) {
+                        session.setRepeatingRequest(captureRequest.build(), null, null)
                     }
-                    override fun onConfigureFailed(p0: CameraCaptureSession) {
-                    }
+
+                    override fun onConfigureFailed(session: CameraCaptureSession) {}
                 }, handler)
             }
 
-            override fun onDisconnected(p0: CameraDevice) {
-
-            }
-
-            override fun onError(p0: CameraDevice, p1: Int) {
-
-            }
+            override fun onDisconnected(camera: CameraDevice) {}
+            override fun onError(camera: CameraDevice, error: Int) {}
         }, handler)
     }
 
-    fun get_permission(){
-        if(ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
+    fun get_permission() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(android.Manifest.permission.CAMERA), 101)
         }
     }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if(grantResults[0] != PackageManager.PERMISSION_GRANTED){
+        if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
             get_permission()
         }
     }
