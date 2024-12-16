@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
+import android.util.Log
 import android.view.Surface
 import android.view.TextureView
 import android.widget.ImageView
@@ -61,6 +62,7 @@ class MainActivity : AppCompatActivity() {
 
         textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(p0: SurfaceTexture, p1: Int, p2: Int) {
+                Log.d("MainActivity", "Surface Texture Available")
                 open_camera()
             }
 
@@ -114,8 +116,10 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("MissingPermission")
     fun open_camera() {
+        Log.d("MainActivity", "Opening camera...")
         cameraManager.openCamera(cameraManager.cameraIdList[0], object : CameraDevice.StateCallback() {
             override fun onOpened(camera: CameraDevice) {
+                Log.d("MainActivity", "Camera opened.")
                 cameraDevice = camera
 
                 val surfaceTexture = textureView.surfaceTexture
@@ -126,15 +130,23 @@ class MainActivity : AppCompatActivity() {
 
                 cameraDevice.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
                     override fun onConfigured(session: CameraCaptureSession) {
+                        Log.d("MainActivity", "Capture session configured.")
                         session.setRepeatingRequest(captureRequest.build(), null, null)
                     }
 
-                    override fun onConfigureFailed(session: CameraCaptureSession) {}
+                    override fun onConfigureFailed(session: CameraCaptureSession) {
+                        Log.e("MainActivity", "Capture session configuration failed.")
+                    }
                 }, handler)
             }
 
-            override fun onDisconnected(camera: CameraDevice) {}
-            override fun onError(camera: CameraDevice, error: Int) {}
+            override fun onDisconnected(camera: CameraDevice) {
+                Log.e("MainActivity", "Camera disconnected.")
+            }
+
+            override fun onError(camera: CameraDevice, error: Int) {
+                Log.e("MainActivity", "Camera error: $error")
+            }
         }, handler)
     }
 
