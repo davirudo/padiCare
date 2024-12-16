@@ -17,7 +17,7 @@ import android.view.Surface
 import android.view.TextureView
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
-import com.example.padicare.ml.Padi2
+import com.example.padicare.ml.Padi3
 import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var handler: Handler
     lateinit var cameraManager: CameraManager
     lateinit var textureView: TextureView
-    lateinit var model: Padi2
+    lateinit var model: Padi3
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         // Load the model
-        model = Padi2.newInstance(this)
+        model = Padi3.newInstance(this)
 
         val handlerThread = HandlerThread("videoThread")
         handlerThread.start()
